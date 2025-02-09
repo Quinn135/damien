@@ -61,7 +61,7 @@ while (true){
     calculateAcceleration(); // Function that updates acceleration and the vectors
 
     // sonarDist = sonar.checkSonar(); // Get output, max of 150
-    sonarDist = sonarPing();
+    sonarDist = [sonarPing(), sonarPing(), sonarPing()].sort()[1]; // Median of 3
     // sonarDist = sonarDist == 0 ? 150 : sonarDist; // This makes it = 150 if sonarDist = 0
 
     // Handle each segment
@@ -113,16 +113,16 @@ while (true){
     } else if (segment == RUNNING){
         if (sonarDist < 50){
             // Turn left
-            lSpeed = -0.4;
-            rSpeed = 0.4;
+            lSpeed = -0.6;
+            rSpeed = 0.6;
 
             // Show led turning left
             led.plot(4, 2);
             led.unplot(2, 2);
         } else {
             // Go forward
-            lSpeed = 0.4;
-            rSpeed = 0.4;
+            lSpeed = 0.6;
+            rSpeed = 0.6;
 
             // Show led center
             led.plot(2, 2);
@@ -131,7 +131,7 @@ while (true){
     }
 
     // Print to serial
-    // serial.writeLine(Math.roundWithPrecision(1/deltaTime, 2).toString() + "fps, " + sonarDist.toString());
+    serial.writeLine(Math.roundWithPrecision(1/deltaTime, 2).toString() + "fps, " + sonarDist.toString());
 
     // Drive motors
     motorControl(Motor.LEFT, lSpeed);
