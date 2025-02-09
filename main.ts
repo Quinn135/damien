@@ -59,8 +59,10 @@ while (true){
 
     // Update sonar and acceleration measurements
     calculateAcceleration(); // Function that updates acceleration and the vectors
-    sonarDist = sonar.checkSonar(); // Get output, max of 150
-    sonarDist = sonarDist == 0 ? 150 : sonarDist; // This makes it = 150 if sonarDist = 0
+
+    // sonarDist = sonar.checkSonar(); // Get output, max of 150
+    sonarDist = sonarPing();
+    // sonarDist = sonarDist == 0 ? 150 : sonarDist; // This makes it = 150 if sonarDist = 0
 
     // Handle each segment
     if (segment == CALIBRATING){ // Calibration/wait for calibration
@@ -111,16 +113,16 @@ while (true){
     } else if (segment == RUNNING){
         if (sonarDist < 50){
             // Turn left
-            // lSpeed = -0.3;
-            // rSpeed = 0.3;
+            lSpeed = -0.4;
+            rSpeed = 0.4;
 
             // Show led turning left
             led.plot(4, 2);
             led.unplot(2, 2);
         } else {
             // Go forward
-            // lSpeed = 0.3;
-            // rSpeed = 0.3;
+            lSpeed = 0.4;
+            rSpeed = 0.4;
 
             // Show led center
             led.plot(2, 2);
@@ -129,11 +131,14 @@ while (true){
     }
 
     // Print to serial
-    serial.writeLine(Math.roundWithPrecision(1/deltaTime, 2).toString() + "fps, " + sonarDist.toString());
+    // serial.writeLine(Math.roundWithPrecision(1/deltaTime, 2).toString() + "fps, " + sonarDist.toString());
 
-    driveMotors(); // Takes lSpeed and rSpeed and makes the motors turn
+    // Drive motors
+    motorControl(Motor.LEFT, lSpeed);
+    motorControl(Motor.RIGHT, rSpeed);
 
     // Update for delta time calcualtions
+    control.waitMicros(1000000/100);
     lastTime = time;
 }
 
@@ -175,13 +180,38 @@ function calculateAcceleration(){
     avgXVector /= 4;
 }
 
-// Calculate the input for the drive function, and drive
-function driveMotors(){
-    if (lSpeed < 0) {
-        lSpeed = -1 - lSpeed;
-    } if (rSpeed < 0) {
-        rSpeed = -1 - rSpeed;
-    }
+function sonarPing(): number {
+    let MAX_PULSE = 26239; // Should be 4.5 meters : 1000000 / 343 * 2 * 4.5(meters)
 
-    motion.drive(lSpeed * 100, rSpeed * 100);
+    // Send pulse
+    pins.setPull(k8.SONAR, PinPullMode.PullNone);
+    pins.digitalWritePin(k8.SONAR, 0);
+    control.waitMicros(2);
+    pins.digitalWritePin(k8.SONAR, 1);
+    control.waitMicros(10);
+    pins.digitalWritePin(k8.SONAR, 0);
+
+    // Read pulse
+    const t = pins.pulseIn(k8.SONAR, PulseValue.High, MAX_PULSE);
+    return t / 2 * 0.0343; // 0.0343 centimeters per microsecond
+}
+
+function motorControl(whichMotor: Motor, speed: number): void {
+    let motorSpeed: number;
+    let direction: MotorDirection;
+
+    direction = speed < 0 ? MotorDirection.REVERSE : MotorDirection.FORWARD;
+    speed = Math.abs(speed);
+
+    motorSpeed = Math.round(speed * 1023);
+
+    if (whichMotor == Motor.LEFT) {
+        pins.digitalWritePin(k8.M1_DIR, direction);
+        pins.analogSetPeriod(k8.M1_PWR, 1024);
+        pins.analogWritePin(k8.M1_PWR, motorSpeed);
+    } else {
+        pins.digitalWritePin(k8.M2_DIR, direction);
+        pins.analogSetPeriod(k8.M2_PWR, 1024);
+        pins.analogWritePin(k8.M2_PWR, motorSpeed);
+    }
 }
